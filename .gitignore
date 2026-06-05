@@ -1,0 +1,11 @@
+data/*.csv
+reports/*
+models/*
+!data/.gitkeep
+!reports/.gitkeep
+!models/.gitkeep
+__pycache__/
+*.pyc
+.venv/
+venv/
+.streamlit/secrets.toml

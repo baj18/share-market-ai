@@ -1,4 +1,4 @@
-"""Streamlit dashboard (dynamic / self-fetching).
+"""Streamlit dashboard (dynamic, with plain-English explanations).
 Educational tool. Not investment advice.
 """
 
@@ -16,7 +16,19 @@ from expert_summary import assess
 
 st.set_page_config(page_title="Share Market Analysis", layout="wide")
 st.title("Share Market Analysis & Forecasting")
-st.caption("Educational tool only. NOT investment advice. Forecasts are unreliable by nature.")
+st.caption("Educational tool only. NOT investment advice. Forecasts are unreliable by nature. "
+           "Everything here is a starting point for your own research, never a buy or sell instruction.")
+
+with st.expander("New here? Read this first (1 minute)"):
+    st.write(
+        "- This tool reads a stock's past prices and recent news and summarises what they suggest. "
+        "It cannot predict the future, and it is not financial advice.\n"
+        "- A 'Buy' or 'Avoid' label means the *recent patterns* lean that way - markets ignore patterns all the time.\n"
+        "- The most honest part is the forecast's 'Edge?' column: it usually says 'no', which means "
+        "short-term prediction is basically a coin flip. That is the truth, not a flaw.\n"
+        "- Hover the small ? next to any number, and open the 'What does this mean?' boxes under each chart, "
+        "for plain-English explanations."
+    )
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
@@ -78,28 +90,76 @@ if st.button("Analyse", type="primary"):
         a = assess(ticker, with_news=fetch_news)
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Current price", f"Rs.{a['current_price']}")
-    c2.metric("Technical", a["technical_signal"])
-    c3.metric("News", a["news_sentiment"])
-    c4.metric("Confidence", f"{a['confidence_pct']}%")
+    c1.metric("Current price", f"Rs.{a['current_price']}",
+              help="The closing price on the most recent trading day, in rupees. "
+                   "It is not a live price - it updates when you refresh the data.")
+    c2.metric("Technical", a["technical_signal"],
+              help="A verdict based only on price patterns and trends - not on the company's "
+                   "business. It looks backwards, so it always lags real moves.")
+    c3.metric("News", a["news_sentiment"],
+              help="The overall mood (positive / neutral / negative) of recent headlines about "
+                   "this company. A weak signal: prices often move opposite to the obvious news.")
+    c4.metric("Confidence", f"{a['confidence_pct']}%",
+              help="How sure the tool is about its own recommendation (0-100). It is capped at 80 "
+                   "and lowered when signals disagree. It is NOT the chance of making money.")
 
     st.subheader(f"Recommendation: {a['recommendation']}")
+    with st.expander("What does this mean?"):
+        st.write(
+            "This is the tool's overall verdict, combining the technical signal, news mood, "
+            "the forecast, and (if loaded) fundamentals. Read it as **'where to look first'**, "
+            "not as an instruction. 'Buy / Accumulate' means the signals currently lean positive; "
+            "'Avoid / Reduce' means they lean negative; 'Hold / Watch' means they're mixed or unclear. "
+            "None of these are advice - do your own research before acting."
+        )
 
     fu = a["fundamentals"]
     if fu["score"] is not None:
         st.subheader(f"Fundamentals: {fu['label']} - score {fu['score']:.0f}/100")
         fcols = st.columns(3)
-        fcols[0].metric("P/E", f"{fu['pe']:.1f}" if fu['pe'] else "-")
-        fcols[1].metric("EPS growth", f"{fu['earnings_growth']*100:.0f}%" if fu['earnings_growth'] is not None else "-")
-        fcols[2].metric("ROE", f"{fu['roe']*100:.0f}%" if fu['roe'] is not None else "-")
+        fcols[0].metric("P/E", f"{fu['pe']:.1f}" if fu['pe'] else "-",
+                        help="Price-to-Earnings: how many rupees you pay for each rupee of yearly "
+                             "profit. Lower can mean 'cheaper', but it varies hugely by industry, "
+                             "so compare like with like.")
+        fcols[1].metric("EPS growth", f"{fu['earnings_growth']*100:.0f}%" if fu['earnings_growth'] is not None else "-",
+                        help="How fast the company's profit-per-share is growing year over year. "
+                             "Higher is generally better.")
+        fcols[2].metric("ROE", f"{fu['roe']*100:.0f}%" if fu['roe'] is not None else "-",
+                        help="Return on Equity: how efficiently the company turns shareholders' "
+                             "money into profit. Higher usually means a better-run business.")
+        with st.expander("What does the fundamentals score mean?"):
+            st.write(
+                "It rates the company on business basics (profit growth, efficiency, debt, "
+                "valuation) **relative to the other stocks in your list** - 0 is the weakest, "
+                "100 the strongest. It's a rough quality gauge that matters more over months and "
+                "years than day to day. Caveat: it compares all stocks together, but a bank and an "
+                "IT firm aren't really comparable on P/E, so treat it as a hint, not a score sheet."
+            )
 
     st.subheader("Price & moving averages")
     st.line_chart(df[["Close", "SMA_20", "SMA_50", "SMA_200"]].dropna())
+    with st.expander("What does this mean?"):
+        st.write(
+            "The dark line is the actual price. The others are **moving averages** - the average "
+            "price over the last 20, 50, and 200 days - which smooth out daily noise to show the "
+            "trend.\n\n"
+            "Rough rule of thumb: when the price sits **above** the 200-day line and the shorter "
+            "averages are stacked on top, the stock is generally in an **uptrend**. When they're "
+            "tangled or the price is below the 200-day line, the trend is weak or down. "
+            "Averages lag, so they confirm trends rather than predict them."
+        )
 
     colA, colB = st.columns(2)
     with colA:
         st.subheader("RSI (14)")
         st.line_chart(df[["RSI"]].dropna())
+        with st.expander("What does this mean?"):
+            st.write(
+                "RSI is a 0-100 'speedometer' for momentum. Above **70** = the stock has risen fast "
+                "and may be 'overbought' (a pullback is more likely). Below **30** = it's fallen hard "
+                "and may be 'oversold' (a bounce is more likely). These are rules of thumb, not "
+                "guarantees - a strong stock can stay overbought for weeks."
+            )
     with colB:
         st.subheader("Forecast by horizon")
         rows = []
@@ -114,17 +174,37 @@ if st.button("Analyse", type="primary"):
                     "Edge?": "yes" if v["beats_naive"] else "no",
                 })
         st.table(pd.DataFrame(rows))
+        with st.expander("What does this mean?"):
+            st.write(
+                "A model's guess for the price change over the next day, week, and month. "
+                "**Read the 'Edge?' column first.** It compares the model against a dumb baseline "
+                "('tomorrow = today'). If it says **'no'**, or 'Dir acc' (how often it got up-vs-down "
+                "right) is near **50%**, the forecast is basically a **coin flip** - ignore that "
+                "number. That's the normal, honest result: short-term prices are very hard to predict."
+            )
 
     st.subheader("Why (technical reasons)")
     for r in a["technical_reasons"]:
         st.write(f"- {r}")
+    with st.expander("What does this mean?"):
+        st.write(
+            "The exact conditions that produced the technical verdict above - nothing is hidden. "
+            "Each line is one ingredient (trend direction, momentum, overbought/oversold) that "
+            "pushed the signal towards Buy, Hold, or Avoid."
+        )
 
     st.subheader("Key risks")
     for r in a["risks"]:
         st.write(f"- {r}")
+    with st.expander("What does this mean?"):
+        st.write(
+            "Things that could go wrong even if the signal looks positive. Every view here comes "
+            "with reasons it might be mistaken - markets, news shocks, and changing conditions can "
+            "all break any pattern."
+        )
 
-    st.info("If a forecast shows 'Edge? no' or direction accuracy near 50%, "
-            "treat that horizon as noise - the normal honest result.")
+    st.info("Reminder: this is a study aid, not advice. The most useful parts are understanding "
+            "the trend and the risks - not chasing the forecast.")
 
 st.divider()
 st.subheader("Walk-forward backtest")
@@ -160,6 +240,22 @@ if st.checkbox("Run backtest for the selected stock (slow)"):
             "Buy & hold": r["buyhold"]["equity"],
         })
         st.line_chart(curves)
+
+        with st.expander("What does this mean? (plain English)"):
+            st.write(
+                "This pretends you actually traded the signals through history and asks: **would you "
+                "have beaten simply buying the stock and holding it - after paying to trade?**\n\n"
+                "- **Total / CAGR** - the return over the whole period / per year. Bigger is better.\n"
+                "- **Sharpe** - return compared to how bumpy the ride was. The single most useful "
+                "number; higher is better.\n"
+                "- **Max DD** (drawdown) - the worst peak-to-bottom fall you'd have had to stomach. "
+                "Less negative is better.\n"
+                "- **Trades** - how often it bought/sold. - **In market** - how much of the time it "
+                "actually held the stock vs. sat in cash.\n\n"
+                "The chart shows the growth of Rs.1 under each strategy. **The bar to beat is the "
+                "'Buy & hold' row.** If the active strategies don't beat it after costs - which is "
+                "common - that's the honest lesson: beating the market reliably is genuinely hard."
+            )
 
         bh = r["buyhold"]["cagr"]
         beat = [lbl for key, lbl in [("tech", "Technical"), ("model", "ML model")]

@@ -1,5 +1,5 @@
 """Universe scan page (auto-added to the sidebar by Streamlit).
-Not investment advice.
+Educational tool. Not investment advice.
 """
 
 import os
@@ -17,6 +17,14 @@ st.set_page_config(page_title="Universe scan", layout="wide")
 st.title("Scan the whole universe")
 st.caption("Screen every stock at once and rank by a blended technical + fundamental "
            "score. Educational only. NOT investment advice.")
+
+with st.expander("What is this page for?"):
+    st.write(
+        "Instead of checking stocks one at a time, this ranks your whole list together so you can "
+        "spot a few interesting names quickly. Think of it as a **shortlist-maker**: screen wide "
+        "here, then open the main page for a deep look at the names that stand out. The ranking is "
+        "a starting point, never a buy or sell call."
+    )
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
@@ -62,13 +70,28 @@ if go:
     st.subheader(f"{len(view)} stocks")
     st.dataframe(view, use_container_width=True)
 
+    with st.expander("What do these columns mean? (plain English)"):
+        st.write(
+            "- **Price** - most recent closing price, in rupees.\n"
+            "- **Signal** - the technical verdict (Buy / Hold / Avoid) from price patterns only.\n"
+            "- **Tech score** - how strongly the patterns lean: positive = bullish, negative = bearish.\n"
+            "- **RSI** - momentum 'speedometer' (0-100). Above 70 = run up fast; below 30 = beaten down.\n"
+            "- **Vol %** - how bumpy the stock is (yearly). Higher = riskier, signals less reliable.\n"
+            "- **Fund score** - business quality vs. the rest of the list (0-100), if fundamentals are loaded.\n"
+            "- **Screen score** - a simple blend of the technical and fundamental scores used to rank the "
+            "list. Higher just means 'screens better than the others here' - **not** a buy call."
+        )
+
     st.subheader("Screen score by stock")
     chart = view.set_index("Stock")["Screen score"].sort_values(ascending=False)
     st.bar_chart(chart)
-
-    st.info("Screen score blends the technical signal with the fundamental score "
-            "(if built). It narrows the field - use the main page for a deep look "
-            "at any single name. Higher is only 'better vs. this list', not a buy call.")
+    with st.expander("How to use this"):
+        st.write(
+            "Use it to pick a handful of names to study, or to compare sectors at a glance. "
+            "Tip: filter to just 'Buy' signals, or sort the table by any column by clicking its "
+            "header. Then open the main page for the full picture on a name - charts, forecast, "
+            "risks, and the honest backtest. None of this is advice."
+        )
 else:
     st.write("Click **Scan now** to rank the whole list. "
              "The first scan fetches data for every stock, so it takes a little while.")
